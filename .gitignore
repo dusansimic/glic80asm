@@ -1,0 +1,18 @@
+# build artifacts
+*.o
+glic80asm
+
+# test outputs
+*.bin
+
+# editor / OS
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+.idea/
+
+# core dumps
+core
+core.*
