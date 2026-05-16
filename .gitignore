@@ -5,6 +5,9 @@ glic80asm
 # test outputs
 *.bin
 
+# tests directory
+/tests/
+
 # editor / OS
 *.swp
 *.swo
