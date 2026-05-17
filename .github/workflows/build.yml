@@ -36,7 +36,7 @@ jobs:
             artifact: glic80asm-windows-x86_64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup MSYS2
         if: runner.os == 'Windows'
@@ -67,7 +67,7 @@ jobs:
         run: ./${{ matrix.bin }} -h || true
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.bin }}
