@@ -190,3 +190,12 @@ Makefile
 - Output formats other than raw binary (Intel HEX, listing files, symbol files) are not produced
 - No undocumented IXH/IXL/IYH/IYL half-register forms
 - Expressions used as `DS` counts or `ORG` addresses must resolve in pass 1 (cannot depend on labels defined later)
+
+## Acknowledgements
+
+- The Z80 programs under [tests/asm_tests/](tests/asm_tests/) and
+  [tests/asm_games/](tests/asm_games/) — the regression corpus this
+  assembler is validated against — were written by **Gliša**.
+- The C games under [tests/c_games/](tests/c_games/) were written by
+  **Korizma**, who also helped adapt the assembler to consume SDCC
+  output (the `-ec` extension).
