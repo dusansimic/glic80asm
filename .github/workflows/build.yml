@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'Makefile'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'Makefile'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux-x86_64
+            os: ubuntu-latest
+            bin: glic80asm
+            artifact: glic80asm-linux-x86_64
+          - label: macos-arm64
+            os: macos-latest
+            bin: glic80asm
+            artifact: glic80asm-macos-arm64
+          - label: windows-x86_64
+            os: windows-latest
+            bin: glic80asm.exe
+            artifact: glic80asm-windows-x86_64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc make
+          update: false
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: make
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: 'msys2 {0}'
+        run: make BIN=glic80asm.exe
+
+      - name: Smoke run
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ./${{ matrix.bin }} -h || true
+
+      - name: Smoke run (Windows)
+        if: runner.os == 'Windows'
+        shell: 'msys2 {0}'
+        run: ./${{ matrix.bin }} -h || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.bin }}
+          if-no-files-found: error
