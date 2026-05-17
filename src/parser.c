@@ -119,7 +119,7 @@ static int do_ds(AsmCtx *ctx, Token *toks, int *cur) {
 
 int parse_line(AsmCtx *ctx, const char *line) {
     TokenList tl;
-    if (lex_line(line, ctx->filename, ctx->line_no, &tl) < 0) {
+    if (lex_line(line, ctx->filename, ctx->line_no, ctx->ext_escapes, &tl) < 0) {
         ctx->errors++;
         return -1;
     }

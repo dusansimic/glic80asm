@@ -42,8 +42,10 @@ typedef struct {
     int    cap;
 } TokenList;
 
-/* Tokenize a single line. Returns 0 ok, -1 on lex error (msg printed to stderr with file:line). */
-int  lex_line(const char *line, const char *filename, int line_no, TokenList *out);
+/* Tokenize a single line. If `escapes` is non-zero, decode C-style \n \t etc.
+   inside string/char literals; otherwise backslash is a normal byte.
+   Returns 0 ok, -1 on lex error (msg printed to stderr with file:line). */
+int  lex_line(const char *line, const char *filename, int line_no, int escapes, TokenList *out);
 void tokens_free(TokenList *tl);
 
 #endif

@@ -14,10 +14,11 @@ Requires a C99 compiler and GNU make. No third-party dependencies.
 ## Usage
 
 ```
-glic80asm [-o out.bin] [-l] input.asm
+glic80asm [-o out.bin] [-l] [-e<flag>...] input.asm
   -o PATH   output file (default: a.bin)
   -l        list symbols on stderr after assembly
   -h        help
+  -e<flag>  enable an extension (see "Extensions" below)
 ```
 
 Output is a flat binary trimmed to the range of emitted bytes — if the
@@ -43,7 +44,9 @@ Exits non-zero on any error; diagnostics go to stderr as
 | `$`           | Current program counter          |
 | `; ...`       | Comment to end of line           |
 
-String escapes: `\n \t \r \0 \\ \" \'`.
+By default, a backslash inside a string or character literal is a normal
+byte — `"a\b"` is three bytes. Pass `-ee` to enable C-style escapes (see
+[Extensions](#extensions)).
 
 Identifiers may contain letters, digits, `_`, and `.`. Identifiers,
 mnemonics, register names, and directives are case-insensitive.
@@ -106,6 +109,18 @@ The full documented Z80 instruction set is supported, including:
 
 Undocumented `SLL` is recognised. Other undocumented opcodes and the
 IXH/IXL/IYH/IYL half-register forms are not supported.
+
+## Extensions
+
+CLI flags whose name starts with `-e` opt into non-default lexer or
+assembler features. The default behaviour is the most compatible
+interpretation; extensions trade portability for ergonomics.
+
+| Flag  | Effect                                                                 |
+|-------|------------------------------------------------------------------------|
+| `-ee` | In string and character literals, decode `\n \t \r \0 \\ \" \'`. Any other `\X` collapses to `X`. Without this flag, backslash is a literal byte. |
+
+Unknown `-e<x>` flags are an error.
 
 ## Testing
 

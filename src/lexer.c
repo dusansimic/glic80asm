@@ -38,7 +38,7 @@ static int parse_int(const char *s, int len, int base, int32_t *out) {
     return 0;
 }
 
-int lex_line(const char *line, const char *filename, int line_no, TokenList *out) {
+int lex_line(const char *line, const char *filename, int line_no, int escapes, TokenList *out) {
     out->toks = NULL;
     out->n = out->cap = 0;
     const char *p = line;
@@ -182,7 +182,7 @@ int lex_line(const char *line, const char *filename, int line_no, TokenList *out
             int bi = 0;
             while (*p && *p != '"') {
                 char c = *p++;
-                if (c == '\\' && *p) {
+                if (escapes && c == '\\' && *p) {
                     char e = *p++;
                     switch (e) {
                         case 'n': c = '\n'; break;
@@ -219,7 +219,7 @@ int lex_line(const char *line, const char *filename, int line_no, TokenList *out
             }
             int32_t v;
             char c = *p++;
-            if (c == '\\' && *p) {
+            if (escapes && c == '\\' && *p) {
                 char e = *p++;
                 switch (e) {
                     case 'n': c = '\n'; break;

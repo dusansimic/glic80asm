@@ -8,10 +8,13 @@
 static void usage(const char *prog) {
     fprintf(stderr,
         "glic80asm - Z80 assembler\n"
-        "usage: %s [-o out.bin] [-l] input.asm\n"
+        "usage: %s [-o out.bin] [-l] [-e<flag>...] input.asm\n"
         "  -o PATH   output file (default a.bin)\n"
         "  -l        list symbols on stderr\n"
-        "  -h        help\n", prog);
+        "  -h        help\n"
+        "extension flags (prefix -e):\n"
+        "  -ee       decode C-style escapes (\\n \\t \\r \\0 \\\\ \\\" \\') in literals\n",
+        prog);
 }
 
 static int read_file(const char *path, char **out) {
@@ -63,6 +66,7 @@ int main(int argc, char **argv) {
     const char *out_path = "a.bin";
     const char *in_path  = NULL;
     int list_syms = 0;
+    int ext_escapes = 0;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-o")) {
@@ -72,6 +76,11 @@ int main(int argc, char **argv) {
             list_syms = 1;
         } else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
             usage(argv[0]); return 0;
+        } else if (!strcmp(argv[i], "-ee")) {
+            ext_escapes = 1;
+        } else if (argv[i][0] == '-' && argv[i][1] == 'e') {
+            fprintf(stderr, "unknown extension flag '%s'\n", argv[i]);
+            usage(argv[0]); return 2;
         } else if (argv[i][0] == '-') {
             fprintf(stderr, "unknown option '%s'\n", argv[i]);
             usage(argv[0]); return 2;
@@ -86,7 +95,8 @@ int main(int argc, char **argv) {
     if (read_file(in_path, &src) < 0) return 1;
 
     AsmCtx ctx = {0};
-    ctx.filename = in_path;
+    ctx.filename    = in_path;
+    ctx.ext_escapes = ext_escapes;
     ctx.syms     = symtab_new();
     ctx.out_lo   = 65536;
     ctx.out_hi   = 0;
