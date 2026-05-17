@@ -48,12 +48,20 @@ if [ -z "$sdcc" ]; then
     exit 2
 fi
 
-# Default glic80asm is the binary next to this script's repo root.
+# Locate glic80asm. Check candidates in order:
+#   1) $GLIC80ASM env override
+#   2) same directory as this script (installed alongside, e.g. /usr/local/bin)
+#   3) the repo root one level up (running from a source checkout via tools/)
+#   4) anything on PATH
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-glic80asm="${GLIC80ASM:-$script_dir/../glic80asm}"
-if [ ! -x "$glic80asm" ]; then
-    # fall back to PATH
-    glic80asm=$(command -v glic80asm || true)
+glic80asm="${GLIC80ASM:-}"
+if [ -z "$glic80asm" ] || [ ! -x "$glic80asm" ]; then
+    for cand in "$script_dir/glic80asm" "$script_dir/../glic80asm" "$(command -v glic80asm || true)"; do
+        if [ -n "$cand" ] && [ -x "$cand" ]; then
+            glic80asm="$cand"
+            break
+        fi
+    done
 fi
 if [ -z "$glic80asm" ] || [ ! -x "$glic80asm" ]; then
     echo "glic80asm not found; build it (make) or set GLIC80ASM=/path/to/glic80asm" >&2

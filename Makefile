@@ -24,6 +24,7 @@ clean:
 install: $(BIN)
 	install -d $(DESTDIR)$(BINDIR)
 	install -m 755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
+	install -m 755 tools/compile.sh $(DESTDIR)$(BINDIR)/glic80compile
 
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/$(BIN)
+	rm -f $(DESTDIR)$(BINDIR)/$(BIN) $(DESTDIR)$(BINDIR)/glic80compile

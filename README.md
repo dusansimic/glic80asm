@@ -19,8 +19,13 @@ make install PREFIX=/usr/local   # system-wide (likely needs sudo)
 make uninstall
 ```
 
-`PREFIX` defaults to `$HOME/.local`; the binary goes to `$PREFIX/bin`.
-`DESTDIR` is honoured for staged installs (packaging).
+Installs two commands into `$PREFIX/bin` (default `$HOME/.local/bin`):
+
+- `glic80asm` — the assembler binary
+- `glic80compile` — the C-to-binary wrapper (`tools/compile.sh` renamed)
+
+`PREFIX` overrides the install root; `DESTDIR` is honoured for staged
+installs (packaging).
 
 ## Usage
 
