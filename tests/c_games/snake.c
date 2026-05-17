@@ -1,16 +1,18 @@
-#include "../common/glic80.h"
+#include "stdglic80.h"
 
 #define SNAKE_MAX 64u
 #define DIR_UP 0u
 #define DIR_RIGHT 1u
 #define DIR_DOWN 2u
 #define DIR_LEFT 3u
+#define START_MASK (GLIC_BTN_CENTER | GLIC_BTN_A)
 
 static unsigned char rng_state;
 static unsigned char snake_x[SNAKE_MAX];
 static unsigned char snake_y[SNAKE_MAX];
 static unsigned char snake_len;
 static unsigned char direction;
+static unsigned char score;
 static unsigned char fruit_x;
 static unsigned char fruit_y;
 static unsigned char last_tail_x;
@@ -55,16 +57,85 @@ static unsigned char random8(void) {
     return rng_state;
 }
 
-static void wait_for_button_press(void) {
-    while (glic_read_buttons() != GLIC_BUTTONS_NONE) {
+static unsigned char start_pressed(unsigned char buttons) {
+    return (buttons & START_MASK) != START_MASK;
+}
+
+static void wait_for_start_press(void) {
+    while (start_pressed(glic_read_buttons()) != 0u) {
         random8();
     }
-    while (glic_read_buttons() == GLIC_BUTTONS_NONE) {
+    while (start_pressed(glic_read_buttons()) == 0u) {
         random8();
     }
-    while (glic_read_buttons() != GLIC_BUTTONS_NONE) {
+    while (start_pressed(glic_read_buttons()) != 0u) {
         random8();
     }
+}
+
+static volatile unsigned char *text_cell(unsigned char row,
+                                         unsigned char col) {
+    volatile unsigned char *p;
+
+    p = GLIC_CVRAM;
+    while (row != 0u) {
+        p += 16u;
+        --row;
+    }
+    p += col;
+    return p;
+}
+
+static void text_put(unsigned char row, unsigned char col, unsigned char ch) {
+    if ((row >= 16u) || (col >= 16u)) {
+        return;
+    }
+    *text_cell(row, col) = ch;
+}
+
+static void text_clear_row(unsigned char row) {
+    unsigned char col;
+
+    for (col = 0u; col < 16u; ++col) {
+        text_put(row, col, 0u);
+    }
+}
+
+static void text_write(unsigned char row, unsigned char col, const char *text) {
+    while ((*text != 0) && (col < 16u)) {
+        text_put(row, col, (unsigned char)*text);
+        ++text;
+        ++col;
+    }
+}
+
+static void text_write_u8_3(unsigned char row,
+                            unsigned char col,
+                            unsigned char value) {
+    unsigned char hundreds;
+    unsigned char tens;
+
+    hundreds = 0u;
+    while (value >= 100u) {
+        value = (unsigned char)(value - 100u);
+        ++hundreds;
+    }
+    tens = 0u;
+    while (value >= 10u) {
+        value = (unsigned char)(value - 10u);
+        ++tens;
+    }
+    text_put(row, col, (unsigned char)('0' + hundreds));
+    text_put(row, (unsigned char)(col + 1u), (unsigned char)('0' + tens));
+    text_put(row,
+             (unsigned char)(col + 2u),
+             (unsigned char)('0' + value));
+}
+
+static void draw_score(void) {
+    text_clear_row(0u);
+    text_write(0u, 0u, "SCORE");
+    text_write_u8_3(0u, 6u, score);
 }
 
 static unsigned char snake_contains(unsigned char x,
@@ -94,6 +165,7 @@ static void place_fruit(void) {
 
 static void reset_game(void) {
     snake_len = 4u;
+    score = 0u;
     snake_x[0] = 8u;
     snake_y[0] = 8u;
     snake_x[1] = 7u;
@@ -162,6 +234,33 @@ static void draw_game_over_border(void) {
     }
 }
 
+static void draw_title_screen(void) {
+    glic_prepare_screen(GLIC_BLACK);
+    draw_board();
+    glic_draw_tile8(5u, 8u, snake_body);
+    glic_draw_tile8(6u, 8u, snake_body);
+    glic_draw_tile8(7u, 8u, snake_body);
+    glic_draw_tile8(8u, 8u, snake_head);
+    glic_draw_tile8(11u, 8u, fruit_tile);
+    text_write(2u, 5u, "SNAKE");
+    text_write(5u, 1u, "CENTER/A START");
+    text_write(7u, 2u, "ARROWS MOVE");
+    text_write(11u, 2u, "EAT FRUIT");
+}
+
+static void draw_game_over_text(void) {
+    text_clear_row(0u);
+    text_clear_row(5u);
+    text_clear_row(6u);
+    text_clear_row(7u);
+    text_clear_row(8u);
+    text_clear_row(10u);
+    text_write(5u, 3u, "GAME OVER");
+    text_write(7u, 4u, "SCORE");
+    text_write_u8_3(7u, 10u, score);
+    text_write(10u, 1u, "CENTER/A MENU");
+}
+
 static unsigned char advance_snake(void) {
     unsigned char new_x;
     unsigned char new_y;
@@ -218,6 +317,9 @@ static unsigned char advance_snake(void) {
     if ((grow != 0u) && (snake_len < SNAKE_MAX)) {
         ++snake_len;
         last_grew = 1u;
+        if (score < 255u) {
+            ++score;
+        }
     }
 
     i = (unsigned char)(snake_len - 1u);
@@ -244,6 +346,7 @@ static void draw_snake_step(void) {
     glic_draw_tile8(snake_x[0], snake_y[0], snake_head);
     if (last_ate_fruit != 0u) {
         glic_draw_tile8(fruit_x, fruit_y, fruit_tile);
+        draw_score();
     }
 }
 
@@ -259,15 +362,16 @@ static void read_controls_during_delay(void) {
 void main(void) {
     unsigned char dead;
 
-    glic_clear_text();
     rng_state = 0xa7u;
-    draw_board();
-    wait_for_button_press();
 
     while (1) {
+        draw_title_screen();
+        wait_for_start_press();
         reset_game();
+        glic_clear_text();
         draw_board();
         draw_snake();
+        draw_score();
         dead = 0u;
 
         while (dead == 0u) {
@@ -279,6 +383,7 @@ void main(void) {
         }
 
         draw_game_over_border();
-        wait_for_button_press();
+        draw_game_over_text();
+        wait_for_start_press();
     }
 }

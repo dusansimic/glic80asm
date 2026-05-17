@@ -1,4 +1,4 @@
-#include "../common/glic80.h"
+#include "stdglic80.h"
 
 #define BIRD_X 24u
 #define PIPE_WIDTH 14u
