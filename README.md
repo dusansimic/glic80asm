@@ -11,6 +11,17 @@ make
 
 Requires a C99 compiler and GNU make. No third-party dependencies.
 
+## Install
+
+```sh
+make install               # installs to $HOME/.local/bin
+make install PREFIX=/usr/local   # system-wide (likely needs sudo)
+make uninstall
+```
+
+`PREFIX` defaults to `$HOME/.local`; the binary goes to `$PREFIX/bin`.
+`DESTDIR` is honoured for staged installs (packaging).
+
 ## Usage
 
 ```
@@ -122,22 +133,6 @@ interpretation; extensions trade portability for ergonomics.
 
 Unknown `-e<x>` flags are an error.
 
-## Testing
-
-```sh
-make test
-```
-
-Assembles [tests/smoke.asm](tests/smoke.asm) and compares against
-[tests/expected.bin](tests/expected.bin) (byte-for-byte). The golden was
-generated with `z80asm` (Bas Wijnen's, v1.8) and is committed.
-
-Regenerate the golden against the reference assembler:
-
-```sh
-REGEN=1 ./tests/run_tests.sh
-```
-
 ## Project layout
 
 ```
@@ -150,10 +145,6 @@ src/
   parser.h, parser.c    Line dispatcher (labels, directives, instructions)
   main.c                CLI driver, two-pass orchestration
 Makefile
-tests/
-  smoke.asm             Coverage source for every supported instruction family
-  expected.bin          Golden output (committed)
-  run_tests.sh          Diff harness
 ```
 
 ## Limitations

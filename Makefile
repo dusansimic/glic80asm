@@ -5,7 +5,10 @@ SRCS    := src/main.c src/parser.c src/encoder.c src/expr.c \
 OBJS    := $(SRCS:.c=.o)
 BIN     := glic80asm
 
-.PHONY: all clean test
+PREFIX  ?= $(HOME)/.local
+BINDIR  ?= $(PREFIX)/bin
+
+.PHONY: all clean install uninstall
 
 all: $(BIN)
 
@@ -16,7 +19,11 @@ $(BIN): $(OBJS)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(OBJS) $(BIN) tests/out.bin
+	rm -f $(OBJS) $(BIN)
 
-test: $(BIN)
-	./tests/run_tests.sh
+install: $(BIN)
+	install -d $(DESTDIR)$(BINDIR)
+	install -m 755 $(BIN) $(DESTDIR)$(BINDIR)/$(BIN)
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(BIN)
