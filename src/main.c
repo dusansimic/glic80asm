@@ -13,7 +13,8 @@ static void usage(const char *prog) {
         "  -l        list symbols on stderr\n"
         "  -h        help\n"
         "extension flags (prefix -e):\n"
-        "  -ee       decode C-style escapes (\\n \\t \\r \\0 \\\\ \\\" \\') in literals\n",
+        "  -ee       decode C-style escapes (\\n \\t \\r \\0 \\\\ \\\" \\') in literals\n"
+        "  -ec       SDCC compatibility (.module/.area/etc, _name::, ###imm, n(ix))\n",
         prog);
 }
 
@@ -67,6 +68,7 @@ int main(int argc, char **argv) {
     const char *in_path  = NULL;
     int list_syms = 0;
     int ext_escapes = 0;
+    int ext_sdcc = 0;
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-o")) {
@@ -78,6 +80,8 @@ int main(int argc, char **argv) {
             usage(argv[0]); return 0;
         } else if (!strcmp(argv[i], "-ee")) {
             ext_escapes = 1;
+        } else if (!strcmp(argv[i], "-ec")) {
+            ext_sdcc = 1;
         } else if (argv[i][0] == '-' && argv[i][1] == 'e') {
             fprintf(stderr, "unknown extension flag '%s'\n", argv[i]);
             usage(argv[0]); return 2;
@@ -97,6 +101,7 @@ int main(int argc, char **argv) {
     AsmCtx ctx = {0};
     ctx.filename    = in_path;
     ctx.ext_escapes = ext_escapes;
+    ctx.ext_sdcc    = ext_sdcc;
     ctx.syms     = symtab_new();
     ctx.out_lo   = 65536;
     ctx.out_hi   = 0;

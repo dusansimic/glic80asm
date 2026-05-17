@@ -6,19 +6,31 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
-/* Returns 1 if name is a directive. */
+/* Returns 1 if name is a directive (including SDCC ones when -ec). */
 static int is_directive(const char *n) {
     return !strcmp(n, "ORG") || !strcmp(n, "FORG") ||
            !strcmp(n, "DB") || !strcmp(n, "DW") ||
            !strcmp(n, "DS")  || !strcmp(n, "EQU") || !strcmp(n, "END") ||
-           !strcmp(n, "DEFB") || !strcmp(n, "DEFW") || !strcmp(n, "DEFS");
+           !strcmp(n, "DEFB") || !strcmp(n, "DEFW") || !strcmp(n, "DEFS") ||
+           !strcmp(n, ".DB") || !strcmp(n, ".DW") || !strcmp(n, ".DS") ||
+           !strcmp(n, ".MODULE") || !strcmp(n, ".OPTSDCC") ||
+           !strcmp(n, ".GLOBL")  || !strcmp(n, ".AREA");
 }
 
-/* Compose qualified name for a local label `.foo` -> "<parent>.foo".
-   Returns malloc'd string the caller must free, or strdup of name. */
+/* A name is "local" if it should be scoped under the previous non-local label.
+   Dot-prefixed always; digit-prefixed only under -ec (SDCC numeric labels). */
+static int is_local_name(AsmCtx *ctx, const char *n) {
+    if (n[0] == '.') return 1;
+    if (ctx->ext_sdcc && isdigit((unsigned char)n[0])) return 1;
+    return 0;
+}
+
+/* Compose qualified name for a local label -> "<parent><name>".
+   Returns malloc'd string the caller must free. */
 static char *qualify_label(AsmCtx *ctx, const char *name) {
-    if (name[0] != '.') {
+    if (!is_local_name(ctx, name)) {
         char *d = malloc(strlen(name) + 1);
         strcpy(d, name);
         return d;
@@ -29,9 +41,15 @@ static char *qualify_label(AsmCtx *ctx, const char *name) {
     }
     size_t la = strlen(ctx->last_label);
     size_t ln = strlen(name);
-    char *d = malloc(la + ln + 1);
+    char *d = malloc(la + ln + 2);
     memcpy(d, ctx->last_label, la);
-    memcpy(d + la, name, ln + 1);
+    /* For digit-prefixed SDCC labels, insert a separator so e.g.
+       "_MAIN" + "00104$" -> "_MAIN.00104$" stays unambiguous. */
+    size_t off = la;
+    if (ctx->ext_sdcc && isdigit((unsigned char)name[0])) {
+        d[off++] = '.';
+    }
+    memcpy(d + off, name, ln + 1);
     return d;
 }
 
@@ -39,7 +57,7 @@ static char *qualify_label(AsmCtx *ctx, const char *name) {
 static int define_label(AsmCtx *ctx, const char *name) {
     char *qname = qualify_label(ctx, name);
     if (!qname) return -1;
-    if (name[0] != '.') {
+    if (!is_local_name(ctx, name)) {
         free(ctx->last_label);
         ctx->last_label = malloc(strlen(name) + 1);
         strcpy(ctx->last_label, name);
@@ -119,7 +137,8 @@ static int do_ds(AsmCtx *ctx, Token *toks, int *cur) {
 
 int parse_line(AsmCtx *ctx, const char *line) {
     TokenList tl;
-    if (lex_line(line, ctx->filename, ctx->line_no, ctx->ext_escapes, &tl) < 0) {
+    if (lex_line(line, ctx->filename, ctx->line_no,
+                 ctx->ext_escapes, ctx->ext_sdcc, &tl) < 0) {
         ctx->errors++;
         return -1;
     }
@@ -198,6 +217,8 @@ int parse_line(AsmCtx *ctx, const char *line) {
         }
         if (define_label(ctx, t[0].text) < 0) { tokens_free(&tl); return -1; }
         cur = 2;
+        /* SDCC export form: `label::` — second colon is just visibility, skip it. */
+        if (ctx->ext_sdcc && t[cur].kind == TK_COLON) cur++;
     }
 
     if (t[cur].kind == TK_EOL) { tokens_free(&tl); return 0; }
@@ -214,6 +235,18 @@ int parse_line(AsmCtx *ctx, const char *line) {
     if (!strcmp(m, "DW") || !strcmp(m, "DEFW")) { cur++; int r = do_dw(ctx, t, &cur); tokens_free(&tl); return r; }
     if (!strcmp(m, "DS") || !strcmp(m, "DEFS")) { cur++; int r = do_ds(ctx, t, &cur); tokens_free(&tl); return r; }
     if (!strcmp(m, "END")) { ctx->end_seen = 1; tokens_free(&tl); return 0; }
+    if (ctx->ext_sdcc) {
+        /* SDCC no-op directives: linker metadata we don't model. */
+        if (!strcmp(m, ".MODULE") || !strcmp(m, ".OPTSDCC") ||
+            !strcmp(m, ".GLOBL")  || !strcmp(m, ".AREA")) {
+            tokens_free(&tl);
+            return 0;
+        }
+        /* SDCC data aliases. */
+        if (!strcmp(m, ".DB")) { cur++; int r = do_db(ctx, t, &cur); tokens_free(&tl); return r; }
+        if (!strcmp(m, ".DW")) { cur++; int r = do_dw(ctx, t, &cur); tokens_free(&tl); return r; }
+        if (!strcmp(m, ".DS")) { cur++; int r = do_ds(ctx, t, &cur); tokens_free(&tl); return r; }
+    }
     if (!strcmp(m, "EQU")) {
         asm_error(ctx, "EQU requires a label name");
         tokens_free(&tl);

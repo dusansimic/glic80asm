@@ -19,3 +19,6 @@ glic80asm
 # core dumps
 core
 core.*
+
+# temporary
+/compiler-support.md

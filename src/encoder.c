@@ -170,6 +170,23 @@ static int parse_op(AsmCtx *ctx, Token *toks, int *cur, Op *op) {
     op->type = OT_IMM;
     op->val = v;
     op->val_known = rsv;
+
+    /* SDCC indexed: `disp (ix)` / `disp (iy)` is equivalent to `(ix+disp)`. */
+    if (ctx->ext_sdcc &&
+        toks[*cur].kind == TK_LPAREN &&
+        toks[*cur + 1].kind == TK_IDENT &&
+        toks[*cur + 2].kind == TK_RPAREN) {
+        const char *n = toks[*cur + 1].text;
+        if (!strcmp(n, "IX") || !strcmp(n, "IY")) {
+            int isiy = (n[1] == 'Y');
+            *cur += 3;
+            op->type      = isiy ? OT_IY_D : OT_IX_D;
+            op->disp      = op->val;
+            op->disp_known = op->val_known;
+            op->val       = 0;
+            op->val_known = 1;
+        }
+    }
     return 0;
 }
 

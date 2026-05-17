@@ -130,8 +130,40 @@ interpretation; extensions trade portability for ergonomics.
 | Flag  | Effect                                                                 |
 |-------|------------------------------------------------------------------------|
 | `-ee` | In string and character literals, decode `\n \t \r \0 \\ \" \'`. Any other `\X` collapses to `X`. Without this flag, backslash is a literal byte. |
+| `-ec` | SDCC / ASxxxx compatibility: accept `.module / .optsdcc / .globl / .area` as no-op directives, `.db / .dw / .ds` as aliases, `label::` double-colon exports, SDCC numeric labels (`00104$:`) scoped under the previous non-local label, `#expr` immediate prefix, single `<expr` (low byte) and `>expr` (high byte) unary ops, `disp (ix)` / `disp (iy)` indexed addressing, and `$` inside identifiers. Lets glic80asm consume `sdcc-sdcc -mz80 -S` output. |
 
 Unknown `-e<x>` flags are an error.
+
+## Compiling C with SDCC
+
+If [SDCC](http://sdcc.sourceforge.net/) is installed, the wrappers under
+`tools/` turn a single C file into a flat binary:
+
+```sh
+tools/compile.sh program.c                # -> program.bin
+tools/compile.sh program.c -o build/p.bin
+tools/compile.sh program.c --stack 0x7700 --asm-out program.asm
+```
+
+The Windows equivalent is `tools\compile.bat`. Both run
+`sdcc-sdcc -mz80 -S → prepend a startup stub → glic80asm -ec`. The
+startup stub does:
+
+```asm
+    ld   sp, <stack>     ; default 0x7700
+    call _main
+__glic80_halt:
+    jr __glic80_halt
+```
+
+so a freestanding `void main(void)` is enough to produce a runnable
+image. Multi-file C programs need to be concatenated before invoking
+the wrapper — glic80asm does not link object files.
+
+A C runtime library matching the GLIČ80 hardware (`glic80.h` with the
+button-read and screen-draw helpers documented in [IO.md](IO.md)) is
+not shipped here yet; programs that depend on one will fail at the
+SDCC stage with a missing-header error.
 
 ## Project layout
 

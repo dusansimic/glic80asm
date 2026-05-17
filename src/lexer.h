@@ -27,6 +27,9 @@ typedef enum {
     TK_SHR,
     TK_DOLLAR,   /* '$' as current PC */
     TK_APOS,     /* trailing apostrophe (AF') captured as part of ident, but keep token for safety */
+    TK_HASH,     /* '#' SDCC immediate prefix (only emitted with sdcc=1) */
+    TK_LT,       /* '<' single (low-byte op, sdcc=1 only) */
+    TK_GT,       /* '>' single (high-byte op, sdcc=1 only) */
 } TokKind;
 
 typedef struct {
@@ -42,10 +45,13 @@ typedef struct {
     int    cap;
 } TokenList;
 
-/* Tokenize a single line. If `escapes` is non-zero, decode C-style \n \t etc.
-   inside string/char literals; otherwise backslash is a normal byte.
+/* Tokenize a single line.
+   `escapes` (-ee): decode \n \t etc. inside string/char literals.
+   `sdcc`    (-ec): accept SDCC syntax — `#` immediate prefix, single `<` `>`
+                    low/high ops, numeric `NNN$` labels, `$` inside idents.
    Returns 0 ok, -1 on lex error (msg printed to stderr with file:line). */
-int  lex_line(const char *line, const char *filename, int line_no, int escapes, TokenList *out);
+int  lex_line(const char *line, const char *filename, int line_no,
+              int escapes, int sdcc, TokenList *out);
 void tokens_free(TokenList *tl);
 
 #endif

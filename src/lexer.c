@@ -38,7 +38,8 @@ static int parse_int(const char *s, int len, int base, int32_t *out) {
     return 0;
 }
 
-int lex_line(const char *line, const char *filename, int line_no, int escapes, TokenList *out) {
+int lex_line(const char *line, const char *filename, int line_no,
+             int escapes, int sdcc, TokenList *out) {
     out->toks = NULL;
     out->n = out->cap = 0;
     const char *p = line;
@@ -48,7 +49,7 @@ int lex_line(const char *line, const char *filename, int line_no, int escapes, T
         Token t = {0};
         if (is_id_start((unsigned char)*p)) {
             const char *s = p;
-            while (is_id_cont((unsigned char)*p)) p++;
+            while (is_id_cont((unsigned char)*p) || (sdcc && *p == '$')) p++;
             int len = (int)(p - s);
             /* allow trailing apostrophe for AF' */
             int has_apos = 0;
@@ -113,6 +114,24 @@ int lex_line(const char *line, const char *filename, int line_no, int escapes, T
             while (isalnum((unsigned char)*p)) p++;
             int len = (int)(p - s);
             int32_t v;
+            /* SDCC numeric label like 00104$ — emit as identifier. */
+            if (sdcc && *p == '$') {
+                int alldec = 1;
+                for (int i = 0; i < len; i++)
+                    if (!isdigit((unsigned char)s[i])) { alldec = 0; break; }
+                if (alldec) {
+                    p++;
+                    int total = len + 1;
+                    char *buf = malloc(total + 1);
+                    for (int i = 0; i < len; i++) buf[i] = s[i];
+                    buf[len] = '$';
+                    buf[total] = 0;
+                    t.kind = TK_IDENT;
+                    t.text = buf;
+                    push(out, t);
+                    continue;
+                }
+            }
             if (len > 1 && (s[len-1] == 'h' || s[len-1] == 'H')) {
                 if (parse_int(s, len - 1, 16, &v) < 0) {
                     fprintf(stderr, "%s:%d: bad hex literal\n", filename, line_no);
@@ -258,11 +277,17 @@ int lex_line(const char *line, const char *filename, int line_no, int escapes, T
             case '~': t.kind = TK_TILDE;  p++; push(out, t); continue;
             case '<':
                 if (p[1] == '<') { t.kind = TK_SHL; p += 2; push(out, t); continue; }
+                if (sdcc)        { t.kind = TK_LT;  p += 1; push(out, t); continue; }
                 fprintf(stderr, "%s:%d: unexpected '<'\n", filename, line_no);
                 return -1;
             case '>':
                 if (p[1] == '>') { t.kind = TK_SHR; p += 2; push(out, t); continue; }
+                if (sdcc)        { t.kind = TK_GT;  p += 1; push(out, t); continue; }
                 fprintf(stderr, "%s:%d: unexpected '>'\n", filename, line_no);
+                return -1;
+            case '#':
+                if (sdcc) { t.kind = TK_HASH; p++; push(out, t); continue; }
+                fprintf(stderr, "%s:%d: unexpected '#'\n", filename, line_no);
                 return -1;
         }
         fprintf(stderr, "%s:%d: stray character '%c'\n", filename, line_no, *p);

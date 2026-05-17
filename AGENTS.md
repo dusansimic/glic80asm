@@ -82,6 +82,7 @@ Currently:
 | Flag  | Effect                                                                                                                                           |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `-ee` | Enable C-style escapes (`\n \t \r \0 \\ \" \'`) in string and char literals. Default is **literal backslash**, matching the reference assembler. |
+| `-ec` | SDCC / ASxxxx compatibility. Accepts `.module / .optsdcc / .globl / .area` no-op directives, `.db / .dw / .ds` aliases, `label::` exports, SDCC numeric labels (`00104$:`) scoped under last non-local label, `#expr` immediate prefix, single `<` / `>` as low/high-byte unary ops, `disp (ix)` / `disp (iy)` indexed operands, and `$` inside identifiers. Plumbing follows the same pattern as `-ee` — lexer + parser + expr + encoder each consult `ctx->ext_sdcc`. |
 
 The parser logic for this lives in `main.c`'s argv loop. Unknown
 `-e<x>` flags get an explicit "unknown extension flag" error rather
@@ -134,6 +135,11 @@ Two things to watch out for:
 2. `EQU` does **not** update `last_label`. Only colon-bound labels
    (`label:` form) anchor scope. This matches what most assemblers do
    and avoids constants accidentally redirecting `.foo` references.
+3. Under `-ec`, SDCC numeric labels (`00104$`) are also treated as
+   local and qualified the same way. The qualifier inserts a `.`
+   separator (so `_MAIN` + `00104$` becomes `_MAIN.00104$`) to keep
+   the boundary visible in `-l` symbol dumps and avoid ambiguity if
+   the parent name happens to end with a digit.
 
 ## Bugs the corpus actually caught
 
@@ -222,6 +228,23 @@ feature with its own design pass" — not "shoehorn into existing code."
   pass-awareness are what make the encoder code uniform.
 - The 64K output buffer. The Z80 address space is 64K; if a future
   feature needs banking, design it as an extension, don't grow `out[]`.
+
+## C compilation pipeline
+
+`tools/compile.sh` (Linux/macOS) and `tools/compile.bat` (Windows) wrap
+the three steps that turn a single C file into a flat binary:
+
+1. `sdcc-sdcc -mz80 -S` produces ASxxxx-flavour assembly.
+2. A small startup stub is prepended (`ORG 0`, `LD SP,$7700`,
+   `CALL _main`, halt loop).
+3. `glic80asm -ec` assembles the combined source.
+
+There is no linker. Programs that span multiple translation units need
+to be concatenated by the caller. There is also no shipping C runtime
+yet — `tests/c_games/*.c` reference a `glic80.h` matching the hardware
+in [IO.md](IO.md) that has to be provided externally. See
+[compiler-support.md](compiler-support.md) for the full directive list
+and rationale behind the SDCC support layer.
 
 ## CI workflow
 

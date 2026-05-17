@@ -23,6 +23,7 @@ typedef struct {
     int             end_seen;
     char           *last_label;   /* most recent non-local label, for `.foo` scoping */
     int             ext_escapes;  /* -ee: process \n \t \r \0 \\ \" \' in literals */
+    int             ext_sdcc;     /* -ec: SDCC/ASxxxx compatibility shims */
 } AsmCtx;
 
 void asm_error(AsmCtx *ctx, const char *fmt, ...);

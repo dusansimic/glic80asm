@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /* Forward decls. */
 static int p_or  (AsmCtx *, Token *, int *, int32_t *, int *);
@@ -111,6 +112,11 @@ static int p_mul(AsmCtx *ctx, Token *toks, int *cur, int32_t *out, int *res) {
 }
 
 static int p_unary(AsmCtx *ctx, Token *toks, int *cur, int32_t *out, int *res) {
+    /* SDCC '#' immediate prefix — no-op, just skip. */
+    if (ctx->ext_sdcc && toks[*cur].kind == TK_HASH) {
+        (*cur)++;
+        return p_unary(ctx, toks, cur, out, res);
+    }
     if (toks[*cur].kind == TK_PLUS) { (*cur)++; return p_unary(ctx, toks, cur, out, res); }
     if (toks[*cur].kind == TK_MINUS) {
         (*cur)++;
@@ -124,6 +130,20 @@ static int p_unary(AsmCtx *ctx, Token *toks, int *cur, int32_t *out, int *res) {
         int32_t v; int r;
         if (p_unary(ctx, toks, cur, &v, &r) < 0) return -1;
         *out = ~v; *res = r;
+        return 0;
+    }
+    if (ctx->ext_sdcc && toks[*cur].kind == TK_LT) {
+        (*cur)++;
+        int32_t v; int r;
+        if (p_unary(ctx, toks, cur, &v, &r) < 0) return -1;
+        *out = v & 0xFF; *res = r;
+        return 0;
+    }
+    if (ctx->ext_sdcc && toks[*cur].kind == TK_GT) {
+        (*cur)++;
+        int32_t v; int r;
+        if (p_unary(ctx, toks, cur, &v, &r) < 0) return -1;
+        *out = (v >> 8) & 0xFF; *res = r;
         return 0;
     }
     return p_primary(ctx, toks, cur, out, res);
@@ -167,19 +187,25 @@ static int p_primary(AsmCtx *ctx, Token *toks, int *cur, int32_t *out, int *res)
             return -1;
         }
         (*cur)++;
-        /* Local label reference: prepend parent label. */
+        /* Local label reference: prepend parent label.
+           - Dot-prefixed names: always local.
+           - Digit-prefixed names (SDCC numeric labels): local only under -ec. */
         const char *name = t->text;
         char *qbuf = NULL;
-        if (name[0] == '.') {
+        int is_dot   = (name[0] == '.');
+        int is_digit = (ctx->ext_sdcc && isdigit((unsigned char)name[0]));
+        if (is_dot || is_digit) {
             if (!ctx->last_label || !ctx->last_label[0]) {
                 asm_error(ctx, "local label '%s' has no parent", name);
                 return -1;
             }
             size_t la = strlen(ctx->last_label);
             size_t ln = strlen(name);
-            qbuf = malloc(la + ln + 1);
+            qbuf = malloc(la + ln + 2);
             memcpy(qbuf, ctx->last_label, la);
-            memcpy(qbuf + la, name, ln + 1);
+            size_t off = la;
+            if (is_digit) qbuf[off++] = '.';   /* match parser's separator */
+            memcpy(qbuf + off, name, ln + 1);
             name = qbuf;
         }
         Sym *s = symtab_find(ctx->syms, name);
