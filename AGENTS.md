@@ -82,7 +82,7 @@ Currently:
 | Flag  | Effect                                                                                                                                           |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `-ee` | Enable C-style escapes (`\n \t \r \0 \\ \" \'`) in string and char literals. Default is **literal backslash**, matching the reference assembler. |
-| `-ec` | SDCC / ASxxxx compatibility. Accepts `.module / .optsdcc / .globl / .area` no-op directives, `.db / .dw / .ds` aliases, `label::` exports, SDCC numeric labels (`00104$:`) scoped under last non-local label, `#expr` immediate prefix, single `<` / `>` as low/high-byte unary ops, `disp (ix)` / `disp (iy)` indexed operands, and `$` inside identifiers. Plumbing follows the same pattern as `-ee` — lexer + parser + expr + encoder each consult `ctx->ext_sdcc`. |
+| `-ec` | SDCC / ASxxxx compatibility. Accepts `.module / .optsdcc / .globl / .area` no-op directives, `.db / .dw / .ds` aliases, `.ascii "..."` (raw bytes) and `.asciz "..."` (null-terminated), `label::` exports, SDCC numeric labels (`00104$:`) scoped under last non-local label, `#expr` immediate prefix, single `<` / `>` as low/high-byte unary ops, `disp (ix)` / `disp (iy)` indexed operands, and `$` inside identifiers. Plumbing follows the same pattern as `-ee` — lexer + parser + expr + encoder each consult `ctx->ext_sdcc`. |
 
 The parser logic for this lives in `main.c`'s argv loop. Unknown
 `-e<x>` flags get an explicit "unknown extension flag" error rather

@@ -15,6 +15,7 @@ static int is_directive(const char *n) {
            !strcmp(n, "DS")  || !strcmp(n, "EQU") || !strcmp(n, "END") ||
            !strcmp(n, "DEFB") || !strcmp(n, "DEFW") || !strcmp(n, "DEFS") ||
            !strcmp(n, ".DB") || !strcmp(n, ".DW") || !strcmp(n, ".DS") ||
+           !strcmp(n, ".ASCII") || !strcmp(n, ".ASCIZ") ||
            !strcmp(n, ".MODULE") || !strcmp(n, ".OPTSDCC") ||
            !strcmp(n, ".GLOBL")  || !strcmp(n, ".AREA");
 }
@@ -116,6 +117,28 @@ static int do_dw(AsmCtx *ctx, Token *toks, int *cur) {
         break;
     }
     if (toks[*cur].kind != TK_EOL) { asm_error(ctx, "trailing garbage after DW"); return -1; }
+    return 0;
+}
+
+/* SDCC `.ascii "..."` (raw bytes) and `.asciz "..."` (null-terminated). */
+static int do_ascii(AsmCtx *ctx, Token *toks, int *cur, int zero_term) {
+    if (toks[*cur].kind != TK_STR) {
+        asm_error(ctx, ".ascii expects a string literal");
+        return -1;
+    }
+    while (toks[*cur].kind == TK_STR) {
+        int n = toks[*cur].tlen;
+        const char *s = toks[*cur].text;
+        for (int i = 0; i < n; i++) emit_byte(ctx, (uint8_t)s[i]);
+        (*cur)++;
+        if (toks[*cur].kind == TK_COMMA) { (*cur)++; continue; }
+        break;
+    }
+    if (zero_term) emit_byte(ctx, 0);
+    if (toks[*cur].kind != TK_EOL) {
+        asm_error(ctx, "trailing garbage after .ascii");
+        return -1;
+    }
     return 0;
 }
 
@@ -246,6 +269,8 @@ int parse_line(AsmCtx *ctx, const char *line) {
         if (!strcmp(m, ".DB")) { cur++; int r = do_db(ctx, t, &cur); tokens_free(&tl); return r; }
         if (!strcmp(m, ".DW")) { cur++; int r = do_dw(ctx, t, &cur); tokens_free(&tl); return r; }
         if (!strcmp(m, ".DS")) { cur++; int r = do_ds(ctx, t, &cur); tokens_free(&tl); return r; }
+        if (!strcmp(m, ".ASCII")) { cur++; int r = do_ascii(ctx, t, &cur, 0); tokens_free(&tl); return r; }
+        if (!strcmp(m, ".ASCIZ")) { cur++; int r = do_ascii(ctx, t, &cur, 1); tokens_free(&tl); return r; }
     }
     if (!strcmp(m, "EQU")) {
         asm_error(ctx, "EQU requires a label name");

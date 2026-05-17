@@ -135,7 +135,7 @@ interpretation; extensions trade portability for ergonomics.
 | Flag  | Effect                                                                 |
 |-------|------------------------------------------------------------------------|
 | `-ee` | In string and character literals, decode `\n \t \r \0 \\ \" \'`. Any other `\X` collapses to `X`. Without this flag, backslash is a literal byte. |
-| `-ec` | SDCC / ASxxxx compatibility: accept `.module / .optsdcc / .globl / .area` as no-op directives, `.db / .dw / .ds` as aliases, `label::` double-colon exports, SDCC numeric labels (`00104$:`) scoped under the previous non-local label, `#expr` immediate prefix, single `<expr` (low byte) and `>expr` (high byte) unary ops, `disp (ix)` / `disp (iy)` indexed addressing, and `$` inside identifiers. Lets glic80asm consume `sdcc-sdcc -mz80 -S` output. |
+| `-ec` | SDCC / ASxxxx compatibility: accept `.module / .optsdcc / .globl / .area` as no-op directives, `.db / .dw / .ds` as aliases, `.ascii "..."` (raw bytes) and `.asciz "..."` (null-terminated), `label::` double-colon exports, SDCC numeric labels (`00104$:`) scoped under the previous non-local label, `#expr` immediate prefix, single `<expr` (low byte) and `>expr` (high byte) unary ops, `disp (ix)` / `disp (iy)` indexed addressing, and `$` inside identifiers. Lets glic80asm consume `sdcc-sdcc -mz80 -S` output. |
 
 Unknown `-e<x>` flags are an error.
 
