@@ -26,14 +26,17 @@ jobs:
             os: ubuntu-latest
             bin: glic80asm
             artifact: glic80asm-linux-x86_64
+            make_args: STATIC=1
           - label: macos-arm64
             os: macos-latest
             bin: glic80asm
             artifact: glic80asm-macos-arm64
+            make_args: ''
           - label: windows-x86_64
             os: windows-latest
             bin: glic80asm.exe
             artifact: glic80asm-windows-x86_64
+            make_args: STATIC=1
 
     steps:
       - uses: actions/checkout@v6
@@ -46,15 +49,19 @@ jobs:
           install: mingw-w64-x86_64-gcc make
           update: false
 
+      - name: Install static libc (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libc6-dev
+
       - name: Build (Unix)
         if: runner.os != 'Windows'
         shell: bash
-        run: make
+        run: make ${{ matrix.make_args }}
 
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: 'msys2 {0}'
-        run: make BIN=glic80asm.exe
+        run: make BIN=glic80asm.exe ${{ matrix.make_args }}
 
       - name: Smoke run
         if: runner.os != 'Windows'

@@ -11,6 +11,29 @@ make
 
 Requires a C99 compiler and GNU make. No third-party dependencies.
 
+### Static build
+
+`STATIC=1` links libc statically, producing a binary with no shared-library
+dependency — it runs on any machine of the same OS regardless of the
+installed libc version:
+
+```sh
+make STATIC=1                 # needs a static libc (see below)
+make CC=musl-gcc STATIC=1     # fully static, no glibc NSS warnings
+```
+
+Static linking does **not** make one binary run across operating systems —
+each OS (Linux, macOS, Windows) still needs its own build. Per platform:
+
+- **Linux**: works. Install the static libc first — `glibc-static`
+  (Fedora/RHEL) or `libc6-dev` (Debian/Ubuntu). Or use `musl-gcc` for a
+  smaller, fully-static binary.
+- **Windows** (MSYS2/MinGW): works, and bundles `libgcc`/`libwinpthread`
+  so the `.exe` needs no MSYS DLLs.
+- **macOS**: not supported — Apple only allows linking through
+  `libSystem.dylib`, so build without `STATIC` (the default dynamic build
+  is already portable across macOS versions).
+
 ## Install
 
 ```sh
