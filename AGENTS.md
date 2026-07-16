@@ -207,6 +207,17 @@ that one or two corpus reference binaries may be incorrect themselves
 (`rndchrs.bin` was 0 bytes when checked) — don't trust ref blindly,
 inspect the diff first.
 
+## Committing
+
+When asked to commit:
+
+- **Keep commits atomic.** One logical change per commit — don't mix a
+  feature, a doc edit, and a refactor in the same commit. Split
+  unrelated work into separate commits so history stays bisectable.
+- **Generate the commit message with the `/caveman:caveman-commit`
+  command.** Don't hand-write commit messages; run that command to
+  produce them.
+
 ## What's deliberately out of scope (v1)
 
 These have been declined, not forgotten:
