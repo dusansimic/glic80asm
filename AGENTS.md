@@ -151,9 +151,12 @@ Two things to watch out for:
 - **Binary `Nb` suffix**: the original plan only had `%1010`. A test
   source used the Intel/Zilog `11111111b` form. Added a fallback
   branch in the lexer's digit path.
-- **`forg` directive**: alias for `ORG`. Some assemblers (or their
-  users) use both `forg` and `org`; we accept either to the same
-  effect.
+- **`forg` directive**: NOT an alias for `ORG` (it was originally, but
+  now diverges). `ORG` only moves the PC and emits nothing (output
+  trimmed to emitted range). `FORG` ("fill origin") also zero-fills the
+  output from the current PC up to the target, so file offset tracks
+  absolute address. Both share `do_org` in `parser.c` via a `fill`
+  flag. See the `ORG` vs `FORG` note in `README.md`.
 - **String escapes**: `\|` in a `tinyfont` string is meant as a literal
   backslash-pipe pair on the reference assembler. We initially decoded
   escapes by default, which dropped the backslash and shifted every

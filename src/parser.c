@@ -74,10 +74,16 @@ static int define_label(AsmCtx *ctx, const char *name) {
     return 0;
 }
 
-static int do_org(AsmCtx *ctx, Token *toks, int *cur) {
+static int do_org(AsmCtx *ctx, Token *toks, int *cur, int fill) {
     int32_t v; int rsv;
     if (expr_parse(ctx, toks, cur, &v, &rsv) < 0) return -1;
     if (!rsv) { asm_error(ctx, "ORG needs resolved expression in pass 1"); return -1; }
+    if (fill) {
+        /* FORG: emit zero bytes from the current PC up to the target so the
+           output-file offset tracks the absolute address. No-op if target is
+           behind PC (behaves like ORG then). */
+        while (ctx->pc < (uint16_t)v) emit_byte(ctx, 0);
+    }
     ctx->pc = (uint16_t)v;
     if (!ctx->origin_set) { ctx->origin = ctx->pc; ctx->origin_set = 1; }
     return 0;
@@ -253,7 +259,7 @@ int parse_line(AsmCtx *ctx, const char *line) {
     }
 
     const char *m = t[cur].text;
-    if (!strcmp(m, "ORG") || !strcmp(m, "FORG")) { cur++; int r = do_org(ctx, t, &cur); tokens_free(&tl); return r; }
+    if (!strcmp(m, "ORG") || !strcmp(m, "FORG")) { int fill = (m[0] == 'F'); cur++; int r = do_org(ctx, t, &cur, fill); tokens_free(&tl); return r; }
     if (!strcmp(m, "DB") || !strcmp(m, "DEFB")) { cur++; int r = do_db(ctx, t, &cur); tokens_free(&tl); return r; }
     if (!strcmp(m, "DW") || !strcmp(m, "DEFW")) { cur++; int r = do_dw(ctx, t, &cur); tokens_free(&tl); return r; }
     if (!strcmp(m, "DS") || !strcmp(m, "DEFS")) { cur++; int r = do_ds(ctx, t, &cur); tokens_free(&tl); return r; }

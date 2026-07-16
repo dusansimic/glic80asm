@@ -86,13 +86,38 @@ parenthesised sub-expressions.
 
 | Directive            | Meaning                                                            |
 |----------------------|--------------------------------------------------------------------|
-| `ORG expr`           | Set the program counter. The first `ORG` also sets the origin.     |
-| `FORG expr`          | Alias for `ORG`.                                                   |
+| `ORG expr`           | Set the program counter. Emits **no** bytes. The first `ORG` also sets the origin. |
+| `FORG expr`          | Set the program counter, **zero-filling** the output from the current PC up to `expr` (see below). |
 | `DB`, `DEFB`         | Emit bytes (expressions or string literals, comma-separated).      |
 | `DW`, `DEFW`         | Emit little-endian 16-bit words.                                   |
 | `DS`, `DEFS`         | Reserve N bytes (zero-filled by default; second arg = fill byte).  |
 | `name EQU expr`      | Bind a constant. Also accepted as `name: EQU expr`.                |
 | `END`                | Stop processing the file at this point.                            |
+
+#### `ORG` vs `FORG`
+
+Both set the program counter, but they differ in what lands in the
+output binary:
+
+- **`ORG expr`** only moves the location counter. It emits nothing. The
+  output is trimmed to the range of bytes actually emitted, so leading
+  address space is never written. If padding is needed, use `DS`.
+- **`FORG expr`** ("fill origin") moves the location counter **and**
+  emits zero bytes from the current PC up to `expr`, so the output-file
+  offset tracks the absolute address. If `expr` is behind the current
+  PC, no fill happens and it behaves like `ORG`.
+
+Example — assembling `ld bc,$ffff` (`01 ff ff`) at address 5:
+
+```asm
+    org 5           forg 5
+    ld bc,$ffff     ld bc,$ffff
+```
+
+```
+org  →  01 ff ff                     (3 bytes, offset 0 = address 5)
+forg →  00 00 00 00 00 01 ff ff      (8 bytes, offset 0 = address 0)
+```
 
 ### Labels
 
